@@ -1,11 +1,12 @@
 import gdspy
 import json
 
-FILE_NAME = 'MEA128_rec.gds'
+FILE_NAME = 'MEA59.gds'
 
 def adjust_electrode_positions(electrode_positions, stimulus):
     '''
     Function to adjust the electrode positions relative to the simulator grid.
+    
     '''
     min_x = min(bb[0] for bb in electrode_positions) - 200
     min_y = min(bb[1] for bb in electrode_positions) - 200
@@ -28,6 +29,9 @@ def adjust_electrode_positions(electrode_positions, stimulus):
     return adjusted_positions,adjusted_stimulus
 
 def resize_positions(electrode_positions, stimulus):
+    '''
+    Function to resize the electrode and stimulus positions to fit the simulator grid.
+    '''
     # resize so that the positions are in the center of a 1800x1800 grid
     adjusted_positions = []
     for bb in electrode_positions:
@@ -44,9 +48,16 @@ def resize_positions(electrode_positions, stimulus):
         adjusted_stimulus.append(((adjusted_x0, adjusted_y0), (adjusted_x1, adjusted_y1)))
     
     return adjusted_positions, adjusted_stimulus
- 
+
 
 def remove_outliers(electrode_positions):
+    '''
+    Function to remove outliers from the electrode positions based on the width and height of the bounding boxes.   
+    Args:
+        electrode_positions (list): A list of bounding boxes of the electrodes.
+    Returns:
+        list: A list of bounding boxes of the electrodes without outliers.
+    '''
     metrics = {}
     for bouding_box in electrode_positions:
         # get the width and height of the bounding box
@@ -85,6 +96,13 @@ def draw_big_bounding_box(electrode_positions, MEA):
     return min_x, min_y, max_x, max_y
 
 def write_json(electrode_positions, clean_filename,stimulus):
+    '''
+    Function to write the electrode positions and stimulus positions to a json file.
+    Args:
+        electrode_positions (list): A list of tuples containing the coordinates of the electrodes.
+        clean_filename (str): The name of the GDS file without the extension.
+        stimulus (list): A list of tuples containing the coordinates of the stimulus electrodes.
+    '''
     adjusted_positions,adjusted_stimulus = adjust_electrode_positions(electrode_positions,stimulus)
     # resize the positions to fit the simulator grid
     adjusted_positions, adjusted_stimulus = resize_positions(adjusted_positions, adjusted_stimulus)
@@ -119,6 +137,8 @@ def write_json(electrode_positions, clean_filename,stimulus):
         f.write(f'],\n "bounding_box": [\n [{min_x}, {min_y}],\n [{max_x}, {max_y}]\n]\n')
         f.write('}')
         f.close()
+        
+        
 def get_center(bouding_box):
     '''
     Function to get the center position of an electrode given its bounding box.
@@ -127,6 +147,12 @@ def get_center(bouding_box):
     return ((bouding_box[0][0] + bouding_box[1][0]) / 2, (bouding_box[0][1] + bouding_box[1][1]) / 2)
 
 def get_area_of_bouding_box(bounding_box):
+    ''' Function to get the area of a bounding box.
+    Args:
+        bounding_box (list): A list containing the coordinates of the bounding box.
+    Returns:
+        float: The area of the bounding box.
+    '''
     if bounding_box is None:
         return 0
     width = bounding_box[1][0] - bounding_box[0][0]
@@ -136,10 +162,13 @@ def get_area_of_bouding_box(bounding_box):
 def get_electrodes(FILE_NAME):
     '''
     Function to get the electrode positions from the MEA cell in the GDS file.
+    
+    Args:
+        FILE_NAME (str): The name of the GDS file containing the MEA cell.
     '''
     lib = gdspy.GdsLibrary(infile=FILE_NAME)
 
-    #get the cell with the name 'MEA_Standard' that contains the electrode polygons
+    #get the cell with the name 'MEA' that contains the electrode polygons. Name can vary, so we search for it.
     keys = list(lib.cells.keys())
     for key in keys:
         if 'MEA' in key:
@@ -153,11 +182,14 @@ def get_electrodes(FILE_NAME):
 
     polygons_64 = [p for p in polygons if (len(p.polygons[0]) == 64 or len(p.polygons[0]) == 60) and p.layers[0] == 2]
     
+    # stimulus electrodes are different, they are electrodes used for stimulation, not for recording
+    # since they are represented as rectangles, we can filter them by checking if the area of the bounding box is equal to the area of the polygon
     stimulus = [p for p in polygons if get_area_of_bouding_box(p.get_bounding_box()) == p.area() and p.layers[0] == 2]
 
     unique_stimulus = {}
     seen_bounding_boxes = set()
 
+    # remove duplicates from the stimulus list based on bounding box
     for p in stimulus:
         bounding_box = tuple(map(tuple, p.get_bounding_box()))
         if bounding_box not in seen_bounding_boxes:
@@ -165,7 +197,6 @@ def get_electrodes(FILE_NAME):
             unique_stimulus[p] = bounding_box
 
     stimulus = list(unique_stimulus.values())
-    
     
     #get center position of electrodes
     bounding_boxes_electrodes = [p.get_bounding_box() for p in polygons_64]
@@ -186,6 +217,9 @@ def get_electrodes(FILE_NAME):
 # --- confirmation ---
 # add dots to the center to check the positions
 def create_dots_confirmation(electrode_positions,MEA,lib,clean_filename):
+    '''
+    Function to create dots at the center of each electrode position for visual confirmation.
+    '''
     # last 4 electodes are the stimulus electrodes 
     stimulus_electrodes = list(electrode_positions)[-4:]
     

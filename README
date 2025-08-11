@@ -1,0 +1,205 @@
+# MEA Electrode Position Extractor
+
+This Python script automatically extracts electrode positions from GDS (GDSII) files containing MEA (Microelectrode Array) layouts and converts these positions into a JSON format suitable for neural simulations.
+
+## Overview
+
+The MEA Electrode Extractor is designed to process semiconductor layout files (GDS format) containing microelectrode array designs. It identifies recording electrodes and stimulation electrodes, extracts their precise coordinates, and outputs them in a standardized JSON format for use in neural simulation software.
+
+## Features
+
+- **Automatic electrode detection**: Identifies and extracts recording electrode positions from polygonal shapes in GDS files
+- **Stimulus electrode detection**: Automatically identifies rectangular electrodes used for stimulation
+- **Outlier removal**: Filters out electrodes with atypical dimensions based on statistical analysis
+- **Coordinate adjustment**: Repositions and rescales coordinates to fit simulator grid (1800x1800)
+- **Validation**: Verifies that the number of extracted electrodes matches the expected count (based on filename)
+- **Visual confirmation**: Generates GDS files with dots at electrode positions for visual verification
+- **JSON export**: Saves final coordinates in structured JSON format
+
+## Requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+## File Structure
+
+```
+.
+├── meafilename.gds                           # Input GDS file (example)
+├── script.py                    # Main script
+├── electrode_positions_meafilename.json      # Output coordinates (generated)
+├── electrode_positions_meafilename.gds       # Visualization file (generated)
+└── first_with_dots_meafilename.gds          # Confirmation file (generated)
+```
+
+## Usage
+
+### Basic Usage
+
+1. **Place your GDS file** in the same directory as the script
+2. **Update the filename** in the script:
+   ```python
+   FILE_NAME = 'your_mea_file.gds'  # Change this to your GDS file
+   ```
+3. **Run the script**:
+   ```bash
+   python script.py
+   ```
+
+### Input File Requirements
+
+- **File format**: GDS/GDSII format
+- **Naming convention**: The filename should contain the number of electrodes (e.g., `MEA59.gds` for 59 electrodes)
+- **Layer requirements**:
+  - Electrodes should be on layer 2
+  - Recording electrodes: 60 or 64-point polygons
+  - Stimulus electrodes: Rectangular shapes
+- **Cell naming**: Must contain a cell with 'MEA' in its name
+
+### Command Line Usage
+
+You can also modify the script to accept command line arguments:
+
+```python
+import sys
+
+if len(sys.argv) > 1:
+    FILE_NAME = sys.argv[1]
+else:
+    FILE_NAME = 'MEA59.gds'  # default file
+```
+
+Then run:
+```bash
+python script.py your_file.gds
+```
+
+## Output Files
+
+The script generates three files:
+
+1. **`electrode_positions_[filename].json`**: Main output file containing:
+   - Electrode coordinates in simulator format
+   - Bounding box information
+   - Indexed electrode positions
+
+2. **`electrode_positions_[filename].gds`**: Visualization file showing:
+   - Dots at recording electrode positions (layer 0)
+   - Rectangles at stimulus electrode positions (layer 2)
+   - Overall bounding box (layer 3)
+
+3. **`first_with_dots_[filename].gds`**: Confirmation file with:
+   - Original MEA layout plus confirmation dots
+   - Visual verification of detected positions
+
+## JSON Output Format
+
+```json
+{
+  "electrode_coordinates": [
+    [0, 450.5, 123.7, 100.0],
+    [1, 467.2, 145.3, 100.0],
+    ...
+  ],
+  "bounding_box": [
+    [min_x, min_y],
+    [max_x, max_y]
+  ]
+}
+```
+
+Each electrode entry contains:
+- `[index, x_coordinate, y_coordinate, z_coordinate]`
+- Recording electrodes are listed first, followed by stimulus electrodes
+
+## Key Functions
+
+### Core Functions
+
+- **`get_electrodes(FILE_NAME)`**: Main function that processes the GDS file
+- **`remove_outliers(electrode_positions)`**: Filters electrodes based on size consistency
+- **`adjust_electrode_positions()`**: Normalizes coordinates to origin
+- **`resize_positions()`**: Scales coordinates to fit 1800x1800 simulator grid
+- **`write_json()`**: Exports coordinates to JSON format
+
+### Utility Functions
+
+- **`get_center(bounding_box)`**: Calculates center point from bounding box
+- **`get_area_of_bounding_box()`**: Computes bounding box area
+- **`draw_big_bounding_box()`**: Creates visualization bounding box
+- **`create_dots_confirmation()`**: Generates confirmation visualization
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"No bounding boxes found with the most common width and height"**
+   - Check if electrodes are on the correct layer (layer 2)
+   - Verify electrode shapes are consistent polygons
+
+2. **"Number of electrodes does not match expected number"**
+   - Ensure filename contains correct electrode count
+   - Check for duplicate or missing electrodes in GDS file
+
+3. **"KeyError: MEA cell not found"**
+   - Verify GDS file contains a cell with 'MEA' in its name
+   - Check cell naming convention in your GDS file
+
+### Debugging
+
+- Check the generated `first_with_dots_*.gds` file to verify electrode detection
+- Use the `electrode_positions_*.gds` file to confirm coordinate transformation
+- Enable debug prints by uncommenting print statements in the code
+
+## Customization
+
+### Modifying Grid Size
+
+To change the simulator grid size, modify the `resize_positions()` function:
+
+```python
+def resize_positions(electrode_positions, stimulus):
+    # Change these values for different grid sizes
+    adjusted_x = bb[0] / 2 + 450  # X offset
+    adjusted_y = bb[1] / 2 + 100  # Y offset
+```
+
+### Changing Electrode Detection Criteria
+
+Modify the polygon detection criteria in `get_electrodes()`:
+
+```python
+# Change point count criteria
+polygons_64 = [p for p in polygons if 
+               (len(p.polygons[0]) == 64 or len(p.polygons[0]) == 60) 
+               and p.layers[0] == 2]
+```
+
+### Custom Layer Assignment
+
+Update layer numbers in the detection logic:
+
+```python
+# Change layer number
+and p.layers[0] == 2  # Change '2' to your desired layer
+```
+
+## Technical Notes
+
+- **Coordinate system**: Uses bottom-left origin with positive X right, positive Y up
+- **Units**: Coordinates are typically in micrometers (μm)
+- **Precision**: Maintains full floating-point precision in JSON output
+- **Memory usage**: Processes entire GDS file in memory; suitable for typical MEA files
+
+## License
+
+This tool is designed for research and educational purposes. Ensure compliance with your organization's data handling policies when processing proprietary GDS files.
+
+## Contributing
+
+When modifying the code:
+1. Maintain the existing function interfaces for compatibility
+2. Add appropriate error handling for edge cases
+3. Update this documentation for any new features
+4. Test with multiple GDS file formats before committing changes
