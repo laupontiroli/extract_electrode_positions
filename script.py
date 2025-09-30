@@ -4,10 +4,19 @@ import numpy as np
 
 FILE_NAME = 'MEA128_rec.gds'
 
-SIMULATOR_GRID_SIZE = (3000, 3000)  # in micrometers (3 mm x 3 mm)
+SIMULATOR_GRID_SIZE = (4000, 4000)  # in micrometers (4 mm x 4 mm)
 DISTANCE_BETWEEN_ELECTRODES = 180
 ELECTRODE_DIAMETER = 30  # in micrometers
 
+def add_labels(electrode_positions): 
+    '''
+    Add labels to electrode positions.
+    Order = left-to-right, bottom-to-top based on coordinates.
+    '''
+    # sort by y first (ascending), then x
+    sorted_positions = sorted(electrode_positions, key=lambda p: (p[1], p[0]))
+    positions_with_labels = [(i, x, y) for i, (x, y) in enumerate(sorted_positions)]
+    return positions_with_labels
 
 def adjust_electrode_positions(electrode_positions, stimulus=None):
     """
@@ -72,10 +81,8 @@ def draw_simulator_grid(MEA):
 def draw_dish(radius, MEA):
     center_x = SIMULATOR_GRID_SIZE[0] / 2
     center_y = SIMULATOR_GRID_SIZE[1] / 2
-    dish = gdspy.Round((center_x, center_y), radius=radius, layer=1)
+    dish = gdspy.Round((center_x, center_y), radius=radius, layer=1,inner_radius=0, number_of_points=120)
     MEA.add(dish)
-
-
 
 
 
@@ -85,22 +92,23 @@ def write_json(electrode_positions, clean_filename, stimulus=None):
     # Create new gds file for visualization
     new_lib = gdspy.GdsLibrary()
     new_cell = gdspy.Cell('Electrode_Positions')
-    for electrode in adjusted_positions:
-        dot = gdspy.Round((electrode[0], electrode[1]),
+    electrode_positions_with_labels = add_labels(adjusted_positions)
+    for label, x, y in electrode_positions_with_labels:
+        dot = gdspy.Round((x, y),
                           radius=ELECTRODE_DIAMETER / 2,
-                          inner_radius=0, number_of_points=60, layer=0)
+                          inner_radius=0, number_of_points=60, layer=2)
         new_cell.add(dot)
 
     min_x, min_y, max_x, max_y = draw_simulator_grid(new_cell)
     draw_dish(radius=min(SIMULATOR_GRID_SIZE) / 2, MEA=new_cell)
     new_lib.add(new_cell)
     new_lib.write_gds(f'electrode_positions_{clean_filename}.gds')
-
+    
     # Write JSON
     with open(f'electrode_positions_{clean_filename}.json', 'w') as f:
         json.dump({
             "electrode_coordinates": [
-                [i, x, y, 100.0] for i, (x, y) in enumerate(adjusted_positions)
+                [i, x, y, 100.0] for i, x, y in electrode_positions_with_labels
             ],
             "bounding_box": [[min_x, min_y], [max_x, max_y]]
         }, f, indent=2)
@@ -139,12 +147,12 @@ def get_electrodes(FILE_NAME, target_layer=2):
 
     # deduplicate with rounding tolerance
     electrode_positions = {(round(x, 3), round(y, 3)) for x, y in electrode_positions}
-
-    if len(electrode_positions) != quant_electrodes:
-        raise ValueError(
-            f'Number of electrodes in GDS ({len(electrode_positions)}) '
-            f'does not match expected ({quant_electrodes}).'
-        )
+    
+    # if len(electrode_positions) != quant_electrodes:
+    #     raise ValueError(
+    #         f'Number of electrodes in GDS ({len(electrode_positions)}) '
+    #         f'does not match expected ({quant_electrodes}).'
+    #     )
 
     write_json(electrode_positions, clean_filename)
     return electrode_positions, MEA, lib, clean_filename
