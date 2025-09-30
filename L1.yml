@@ -1,0 +1,22 @@
+Definitions: !include _definitions.yml
+Geometry:
+  Parametric Surface:
+    Layer Extents:
+      DISH: [[0.0, 0.0, 0.0], [4000., 4000., 450.0]] # 4 mm x 4 mm x 0.45 mm
+  Cell Distribution:
+    EXC:
+      DISH: 800
+    INH:
+      DISH: 200
+Connection Generator:
+  Axon Extent:
+    EXC:
+      default:
+        width: [1000.0, 1000.0]
+        offset: [0, 0]
+    INH:
+      default:
+        width: [1000.0, 1000.0]
+        offset: [0, 0]
+  Synapses: !include _synapses.yml
+Cell Types: !include _cell_types.yml
