@@ -61,8 +61,7 @@ def remove_outliers(electrode_positions):
         else:
             metrics[(width, height)] = 1
     most_common = max(metrics, key=metrics.get)
-    filtered_bounding_boxes = [bb for bb in electrode_positions
-                               if (bb[1][0] - bb[0][0], bb[1][1] - bb[0][1]) == most_common]
+    filtered_bounding_boxes = [bb for bb in electrode_positions if (bb[1][0] - bb[0][0], bb[1][1] - bb[0][1]) == most_common]
     if len(filtered_bounding_boxes) == 0:
         raise ValueError('No bounding boxes found with the most common width and height.')
     return filtered_bounding_boxes
@@ -95,17 +94,17 @@ def write_json(electrode_positions, clean_filename, stimulus=None):
     electrode_positions_with_labels = add_labels(adjusted_positions)
     for label, x, y in electrode_positions_with_labels:
         dot = gdspy.Round((x, y),
-                          radius=ELECTRODE_DIAMETER / 2,
-                          inner_radius=0, number_of_points=60, layer=2)
+                        radius=ELECTRODE_DIAMETER / 2,
+                        inner_radius=0, number_of_points=60, layer=2)
         new_cell.add(dot)
 
     min_x, min_y, max_x, max_y = draw_simulator_grid(new_cell)
     draw_dish(radius=min(SIMULATOR_GRID_SIZE) / 2, MEA=new_cell)
     new_lib.add(new_cell)
-    new_lib.write_gds(f'electrode_positions_{clean_filename}.gds')
-    
+    new_lib.write_gds(f'./electrode_positions/electrode_positions_{clean_filename}.gds')
+
     # Write JSON
-    with open(f'electrode_positions_{clean_filename}.json', 'w') as f:
+    with open(f'./electrode_positions/electrode_positions_{clean_filename}.json', 'w') as f:
         json.dump({
             "electrode_coordinates": [
                 [i, x, y, 100.0] for i, x, y in electrode_positions_with_labels
@@ -171,13 +170,13 @@ def create_dots_confirmation(electrode_positions, MEA, lib, clean_filename):
 
     for pos in stimulus_electrodes:
         box = gdspy.Rectangle((pos[0] - 10, pos[1] - 10),
-                              (pos[0] + 10, pos[1] + 10), layer=0)
+                            (pos[0] + 10, pos[1] + 10), layer=0)
         MEA.add(box)
     for pos in normal_electrodes:
         dot = gdspy.Round(pos, radius=3, inner_radius=0,
-                          number_of_points=16, layer=0)
+                        number_of_points=16, layer=0)
         MEA.add(dot)
-    lib.write_gds(f'first_with_dots_{clean_filename}.gds')
+    lib.write_gds(f'./electrode_positions/first_with_dots_{clean_filename}.gds')
 
 
 if __name__ == '__main__':
