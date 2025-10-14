@@ -2,7 +2,7 @@ import gdspy
 import json
 import numpy as np
 
-FILE_NAME = 'MEA128_rec.gds'
+FILE_NAME = 'MEA512.gds'
 
 SIMULATOR_GRID_SIZE = (4000, 4000)  # in micrometers (4 mm x 4 mm)
 DISTANCE_BETWEEN_ELECTRODES = 180
