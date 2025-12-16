@@ -142,7 +142,12 @@ NEW_MAPPING = [
 
 # --- end pasted arrays ---
 
-CSV_PATH = Path("eval_mea/mea_map.csv")
+# Paths relative to this script's directory
+SCRIPT_DIR = Path(__file__).parent
+DATA_DIR = SCRIPT_DIR / "data"
+OUTPUT_DIR = SCRIPT_DIR / "outputs"
+
+CSV_PATH = DATA_DIR / "mea_map.csv"
 
 def compare_mappings():
     if not CSV_PATH.exists():
@@ -208,14 +213,16 @@ def compare_mappings():
             dup_counts_old = pd.Series(flat_old).value_counts()
             print("Duplicates in OLD_MAPPING:")
             print(dup_counts_old[dup_counts_old > 1])
-            dup_counts_old[dup_counts_old > 1].to_csv("eval_mea/duplicate_old_numbers.csv")
-            print("Saved duplicate old numbers to eval_mea/duplicate_old_numbers.csv")
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            dup_counts_old[dup_counts_old > 1].to_csv(OUTPUT_DIR / "duplicate_old_numbers.csv")
+            print(f"Saved duplicate old numbers to {OUTPUT_DIR / 'duplicate_old_numbers.csv'}")
         if not dup_new_nums.empty:
             dup_counts_new = pd.Series(flat_new).value_counts()
             print("\nDuplicates in NEW_MAPPING:")
             print(dup_counts_new[dup_counts_new > 1])
-            dup_counts_new[dup_counts_new > 1].to_csv("eval_mea/duplicate_new_numbers.csv")
-            print("Saved duplicate new numbers to eval_mea/duplicate_new_numbers.csv")
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            dup_counts_new[dup_counts_new > 1].to_csv(OUTPUT_DIR / "duplicate_new_numbers.csv")
+            print(f"Saved duplicate new numbers to {OUTPUT_DIR / 'duplicate_new_numbers.csv'}")
     else:
         print("No duplicate numbers found in OLD_MAPPING or NEW_MAPPING ✅")
 
@@ -227,21 +234,24 @@ def compare_mappings():
     print(f"CSV 'old' values not present in OLD_MAPPING (unused in arrays): {len(unused_csv_old)}")
 
     if mismatches:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         mismatches_df = pd.DataFrame(mismatches)
-        mismatches_df.to_csv("eval_mea/mismatches.csv", index=False)
-        print(f"Saved {len(mismatches)} mismatches to eval_mea/mismatches.csv (columns: row,col,old,expected_new,actual_new)")
+        mismatches_df.to_csv(OUTPUT_DIR / "mismatches.csv", index=False)
+        print(f"Saved {len(mismatches)} mismatches to {OUTPUT_DIR / 'mismatches.csv'} (columns: row,col,old,expected_new,actual_new)")
     else:
         print("No mismatches found ✅")
 
     if missing_old_entries:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         missing_df = pd.DataFrame(missing_old_entries)
-        missing_df.to_csv("eval_mea/missing_old_entries.csv", index=False)
-        print(f"Saved {len(missing_old_entries)} missing-old entries to eval_mea/missing_old_entries.csv (these olds are not in the CSV).")
+        missing_df.to_csv(OUTPUT_DIR / "missing_old_entries.csv", index=False)
+        print(f"Saved {len(missing_old_entries)} missing-old entries to {OUTPUT_DIR / 'missing_old_entries.csv'} (these olds are not in the CSV).")
 
     if unused_csv_old:
-        pd.DataFrame({'unused_csv_old': unused_csv_old}).to_csv("eval_mea/unused_csv_old.csv", index=False)
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({'unused_csv_old': unused_csv_old}).to_csv(OUTPUT_DIR / "unused_csv_old.csv", index=False)
         print(unused_csv_old)
-        print(f"Saved {len(unused_csv_old)} CSV-old values that never appear in OLD_MAPPING to unused_csv_old.csv")
+        print(f"Saved {len(unused_csv_old)} CSV-old values that never appear in OLD_MAPPING to {OUTPUT_DIR / 'unused_csv_old.csv'}")
 
     # Fail (non-zero exit) if mismatches found (optional):
     if mismatches:
@@ -324,9 +334,10 @@ if __name__ == "__main__":
     compare_mappings()
     MEA_lib = gdspy.GdsLibrary()
     MEA_cell = gdspy.Cell('MEA_with_Electrodes')
-    electrode_positions = get_positions_from_yaml('eval_mea/512_long_mea_6x.yaml')
+    electrode_positions = get_positions_from_yaml(DATA_DIR / '512_long_mea_6x.yaml')
     filled_electrode_positions= fill_missing_positions_compact(electrode_positions)
     draw_electrodes(MEA_cell, filled_electrode_positions)
     MEA_lib.add(MEA_cell)
-    MEA_lib.write_gds('eval_mea/MEA_with_electrodes.gds')
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    MEA_lib.write_gds(OUTPUT_DIR / 'MEA_with_electrodes.gds')
     
